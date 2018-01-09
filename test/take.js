@@ -134,8 +134,6 @@ test('take when abort on the first message', function (t) {
 
 })
 
-
-
 test('take when abort on the first message', function (t) {
 
   var cbs = []
@@ -162,3 +160,36 @@ test('take when abort on the first message', function (t) {
   abort_cb(true)
 })
 
+test("take doesn't abort multiple times when aborted early", function (t) {
+  var abortNb = 0
+  var sourceAns = [] // Delays answers to control the ordering of events
+  var sinkAns = [
+    function (done, d) { 
+      t.notOk(done)
+      read(null, sinkAns[1]) // Ask another value...
+      read(true, sinkAns[2]) // ...but abort before the answer comes back
+      t.equal(abortNb, 1, "Aborting only once upstream")
+      sourceAns.shift()(true)
+      
+      // Should not have pending answers but in case it does execute the others
+      // to end the test
+      while (sourceAns.length > 0) sourceAns.shift()(true)
+    },
+    function (done, d) { t.ok(done) },
+    function (done, d) { t.ok(done); t.end() }
+  ]
+
+  var read = pull(
+    function (abort, cb) {
+      if(abort) {
+        abortNb++
+      }
+      sourceAns.push(cb)
+    },
+    pull.take(1)
+  )
+
+  read(null, sinkAns[0]) // Sink asks a value
+  sourceAns.shift()(false, 1) // Source answers with a value
+
+})
