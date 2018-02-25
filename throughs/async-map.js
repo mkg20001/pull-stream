@@ -29,7 +29,7 @@ module.exports = function asyncMap (map) {
               busy = false
               if(aborted) {
                 cb(aborted)
-                abortCb(aborted)
+                if (abortCb) abortCb(aborted)
               }
               else if(err) next (err, cb)
               else cb(null, data)
